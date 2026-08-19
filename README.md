@@ -15,4 +15,4 @@ By optimizing how these networks train, we can simulate complex engineering and 
 
 ## Deep Dive
 For a comprehensive look at the architecture details, testing methodology, and performance benchmarks, please refer to the main project document: 
-📄 [Optimización_PINN.pdf](./Optimización_PINN.pdf)
+📄 [Optimización_PINN.pdf](./Optimización_PINN___Optimización_numérica.pdf)
