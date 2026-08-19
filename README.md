@@ -1,82 +1,25 @@
-# 🧠 Optimizing Physics-Informed Neural Networks (PINNs) for the Klein-Gordon Equation
+# PINN for Klein-Gordon: Solving wave equations without a mesh.
 
-Welcome! This repository contains the code and analysis for my academic project on **optimizing a Physics-Informed Neural Network (PINN) to solve the homogeneous Klein-Gordon equation**. This is not just about building a neural network that approximates a solution; it's about understanding **why and how** we can effectively train it to respect fundamental physics.
+How do we solve physics equations without a mesh?
 
-If you're a data science recruiter, think of this as a deep dive into the challenges of optimization in a complex, high-dimensional space. It's about going beyond a simple "fit" and dealing with the realities of non-convex loss landscapes, gradient imbalance, and the search for a good Pareto optimum.
+## The Problem
+We solve the 2D Klein-Gordon equation. This models a relativistic quantum particle confined in a box and then released.
 
-## 🚀 Project Overview
+## Why this approach?
+PINNs learn the solution directly from the PDE. This avoids costly mesh generation. We get a differentiable solution that can be queried at any point in space-time.
 
-The core goal was to use a PINN to approximate the solution to the Klein-Gordon equation, a relativistic wave equation. The PINN's loss function is a combination of:
+## The Optimization Strategy
+We minimize a multi-objective loss function with a two-stage optimizer. First, we use ADAM with Learning Rate Annealing (LRA). LRA dynamically balances the gradients from the physics loss against the initial and boundary condition losses. This prevents the PDE residual from dominating the training. We use an exponential learning rate schedule, starting at 1e-4. After 100,000 epochs, we switch to L-BFGS. L-BFGS refines the solution quickly, reaching a stable Pareto optimum.
 
-- **Physics Loss (`L_f`)**: Ensures the network's output satisfies the actual partial differential equation (PDE) at a set of collocation points.
-- **Data Loss (`L_ic` & `L_bc`)**: Ensures the network adheres to the given initial and boundary conditions.
+## Key Results
+- Final relative L2 error of 9.53% against the pseudo-spectral solver.
+- ADAM + LRA achieves a stable loss of 1e-5.
+- L-BFGS refinement reaches a total loss of 1e-8 in under 500 iterations.
+- The PINN correctly reproduces the relativistic light cone, matching the group velocity of the wave packet.
 
-**The main challenge?** The physics loss and the data loss are often at odds. The gradients from the physics loss can be much larger and stiffer than those from the data loss, leading to a "gradient imbalance" that makes training difficult and can trap the optimizer in suboptimal local minima.
-
-## ✨ Key Features
-
-- **Mathematical Formulation:** A clear breakdown of the Klein-Gordon equation, its analytical solution, and the specific problem setup (initial & boundary conditions).
-- **Optimization Analysis:** A rigorous analysis of the loss function's non-convexity using KKT conditions and Hessian analysis, explaining *why* this is a hard optimization problem.
-- **Novel Optimizer Strategy:** Implementation of a two-stage optimization pipeline:
-    1.  **ADAM + Learning Rate Annealing (LRA):** This stage balances the gradients between the physics and data losses, preventing one from dominating the other and finding a good initial region in the loss landscape.
-    2.  **L-BFGS:** A powerful quasi-Newton method that refines the solution to a high-precision local minimum.
-- **SIREN Activation Function:** This architecture was chosen because of its ability to represent high-frequency functions, which is crucial for wave-like solutions.
-- **Validation:** Comparison of the PINN's predictions against a highly accurate pseudo-spectral numerical solver (the "ground truth").
-- **Detailed Results:** Analysis of the convergence behavior and the final accuracy (a 9.53% L2 relative error), highlighting the trade-offs and successes of the optimization.
-
-## 🎯 Problem Definition
-
-The project simulates a simple physical scenario: the evolution of a static Gaussian wave-packet that is released and disperses over time. The goal is to approximate its behavior using a PINN. The optimization problem can be framed as:
-
-> Find the network parameters `θ` that minimize a weighted sum of the loss functions: `L(θ) = λ_ic * L_ic(θ) + λ_bc * L_bc(θ) + λ_f * L_f(θ)`.
-
-The fundamental tension is between satisfying the PDE (`L_f`) and the initial/boundary conditions (`L_ic` & `L_bc`). This is a classic multi-objective optimization problem.
-
-## 🧪 Methodology & Implementation
-
-The project follows a structured methodology:
-
-1.  **Architecture:** A deep neural network with 6 hidden layers and 128 neurons each, using the **SIREN** activation function.
-2.  **Data Scaling:** Variables are normalized to `[-1, 1]` to improve training stability.
-3.  **Optimizer 1: ADAM + LRA (100,000 iterations):**
-    - This is the "exploration" phase.
-    - LRA dynamically adjusts the weights (`λ_ic`, `λ_bc`) of the loss terms to balance their gradients.
-    - This stage finds a promising region in the complex, non-convex loss landscape.
-4.  **Optimizer 2: L-BFGS (5,000 iterations max):**
-    - This is the "refinement" or "exploitation" phase.
-    - Starting from the weights found by ADAM+LRA, L-BFGS rapidly converges to a high-precision local minimum.
-5.  **Validation:** The final PINN solution is compared to a classical numerical solution generated by a pseudo-spectral method.
-
-## 📊 Results
-
-- **ADAM + LRA:** Successfully stabilized the training and reached a total loss on the order of `10⁻⁵`. It found a balanced Pareto point with final loss weights of `[1.0, 4.90, 0.82]`.
-- **L-BFGS:** Refined the solution, achieving a total loss on the order of `10⁻⁸` in under 500 iterations. This shows the power of using a second-order method once you've navigated to a good starting point.
-- **Validation:** The PINN achieved a **9.53% L2 relative error** when compared to the numerical solution. While the PINN successfully captures the overall wave-like behavior (speed of propagation, "light cone" shape), it struggles with perfect amplitude replication, especially in the more dynamic regions.
-- **Graphical Analysis:**
-    ![Loss Curves](img/loss_curves.png) <!-- Placeholder for loss curves image -->
-    *Figure 1: Training loss curves. The ADAM+LRA phase shows a fast but noisy initial drop, while the L-BFGS phase demonstrates a smooth and rapid convergence.*
-    ![Validation](img/validation.png) <!-- Placeholder for validation image -->
-    *Figure 2: Comparison of the PINN solution vs. the numerical simulation. The PINN captures the correct wave dynamics but shows some amplitude inconsistency.*
-
-## 🤔 Conclusions & Takeaways
-
-This project successfully demonstrated a robust optimization strategy for a challenging problem. The key takeaways are:
-
-- **Optimization is a First-Class Problem:** For a PINN to work, the optimization algorithm is just as critical as the network architecture. The non-convexity of the loss function requires careful handling.
-- **Two-Stage Approach is Powerful:** Using ADAM+LRA for exploration and L-BFGS for refinement proved to be a very effective strategy for navigating a complex loss landscape and achieving high-precision results.
-- **Gradient Balancing is Key:** The Learning Rate Annealing (LRA) technique is essential for managing the stiff dynamics of the physics loss gradients.
-- **The Pareto Frontier is Real:** The project highlights that finding a solution that perfectly satisfies both the PDE and boundary conditions simultaneously is a classic multi-objective optimization challenge. We achieved a good compromise, but not a perfect one.
-- **PINNs vs. Traditional Methods:** While powerful, PINNs are not yet a complete replacement for established numerical solvers. This project shows that they can achieve good results but might require more sophisticated optimization and may still lag behind in precision for very specific tasks.
-
-## 🔗 Repository & Resources
-
-- **GitHub Repository:** [https://github.com/Emmaquantum/Optimization_PINN.git](https://github.com/Emmaquantum/Optimization_PINN.git)
-- **Full Report:** See the `Optimización_PINN_-_Optimización_numérica.pdf` file for the complete mathematical and technical deep dive.
-
-## 👤 Author
-
-- **Name:** Julián Sierra Salamanca
-- **Date:** August 19, 2026
-- **Project:** Ph.D. level research work in Applied Mathematics.
-
-Feel free to reach out if you have any questions or would like to discuss the project further!
+## Quick Start
+```bash
+git clone https://github.com/Emmaquantum/Optimization_PINN.git
+cd Optimization_PINN
+pip install -r requirements.txt
+python run.py
